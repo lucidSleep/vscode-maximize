@@ -1,0 +1,4 @@
+# Line endings are the repository's business, not each machine's core.autocrlf setting:
+# everything is stored and checked out with LF, as .editorconfig asks.
+* text=auto eol=lf
+*.vsix binary

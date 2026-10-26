@@ -1,0 +1,222 @@
+{
+  "name": "vscode-maximize",
+  "displayName": "Maximize",
+  "description": "Maximize whatever has focus (an editor, the terminal panel, or a chat in the secondary side bar) with one key or one button, and restore the layout the same way.",
+  "version": "0.1.0",
+  "publisher": "lucidsleep",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lucidSleep/vscode-maximize.git"
+  },
+  "engines": {
+    "vscode": "^1.140.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "maximize",
+    "zen mode",
+    "layout",
+    "terminal",
+    "panel"
+  ],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "check": "tsc -p jsconfig.json",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "~1.140.0",
+    "@vscode/vsce": "^4.0.0",
+    "typescript": "~5.9.3"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "maximize.maximizeEditor",
+        "title": "Maximize Editor",
+        "category": "Maximize",
+        "icon": "$(screen-full)"
+      },
+      {
+        "command": "maximize.maximizeEditorGroupMaximized",
+        "title": "Maximize Editor",
+        "category": "Maximize",
+        "icon": "$(screen-full)"
+      },
+      {
+        "command": "maximize.maximizePanel",
+        "title": "Maximize Panel (Full Window)",
+        "category": "Maximize",
+        "icon": "$(screen-full)"
+      },
+      {
+        "command": "maximize.toggleSecondarySideBar",
+        "title": "Toggle Maximized Secondary Side Bar",
+        "category": "Maximize"
+      },
+      {
+        "command": "maximize.restore",
+        "title": "Restore Layout",
+        "category": "Maximize",
+        "icon": "$(screen-normal)"
+      },
+      {
+        "command": "maximize.restoreGroupMaximized",
+        "title": "Restore Layout",
+        "category": "Maximize",
+        "icon": "$(screen-normal)"
+      },
+      {
+        "command": "maximize.restorePanelMaximized",
+        "title": "Restore Layout",
+        "category": "Maximize",
+        "icon": "$(screen-normal)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "maximize.maximizeEditor",
+          "when": "!inZenMode && !panelMaximized"
+        },
+        {
+          "command": "maximize.maximizeEditorGroupMaximized",
+          "when": "false"
+        },
+        {
+          "command": "maximize.maximizePanel",
+          "when": "!inZenMode && !panelMaximized && (panelAlignment == 'center' || (panelPosition != 'bottom' && panelPosition != 'top'))"
+        },
+        {
+          "command": "maximize.toggleSecondarySideBar",
+          "when": "false"
+        },
+        {
+          "command": "maximize.restore",
+          "when": "inZenMode && !panelMaximized && !editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.restoreGroupMaximized",
+          "when": "inZenMode && !panelMaximized && editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.restorePanelMaximized",
+          "when": "panelMaximized"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "maximize.maximizeEditor",
+          "group": "navigation@1000",
+          "when": "!inZenMode && !editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.maximizeEditorGroupMaximized",
+          "group": "navigation@1000",
+          "when": "!inZenMode && editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.restore",
+          "group": "navigation@1000",
+          "when": "inZenMode && !editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.restoreGroupMaximized",
+          "group": "navigation@1000",
+          "when": "inZenMode && editorPartMaximizedEditorGroup"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "maximize.maximizeEditor",
+          "group": "9_maximize",
+          "when": "!inZenMode && !editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.maximizeEditorGroupMaximized",
+          "group": "9_maximize",
+          "when": "!inZenMode && editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.restore",
+          "group": "9_maximize",
+          "when": "inZenMode && !editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.restoreGroupMaximized",
+          "group": "9_maximize",
+          "when": "inZenMode && editorPartMaximizedEditorGroup"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "maximize.maximizePanel",
+          "group": "navigation@1000",
+          "when": "viewLocation == 'panel' && !inZenMode && !panelMaximized && (panelAlignment == 'center' || (panelPosition != 'bottom' && panelPosition != 'top'))"
+        },
+        {
+          "command": "maximize.restorePanelMaximized",
+          "group": "navigation@1000",
+          "when": "viewLocation == 'panel' && panelMaximized"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "maximize.maximizeEditor",
+        "key": "ctrl+m",
+        "when": "!inZenMode && !panelMaximized && !panelFocus && !auxiliaryBarFocus && !auxiliaryBarMaximized"
+      },
+      {
+        "command": "maximize.maximizePanel",
+        "key": "ctrl+m",
+        "when": "!inZenMode && !panelMaximized && panelFocus && (panelAlignment == 'center' || (panelPosition != 'bottom' && panelPosition != 'top'))"
+      },
+      {
+        "command": "maximize.toggleSecondarySideBar",
+        "key": "ctrl+m",
+        "when": "!inZenMode && (auxiliaryBarFocus || auxiliaryBarMaximized)"
+      },
+      {
+        "command": "maximize.restorePanelMaximized",
+        "key": "ctrl+m",
+        "when": "panelMaximized"
+      },
+      {
+        "command": "maximize.restoreGroupMaximized",
+        "key": "ctrl+m",
+        "when": "inZenMode && !panelMaximized && editorPartMaximizedEditorGroup"
+      },
+      {
+        "command": "maximize.restore",
+        "key": "ctrl+m",
+        "when": "inZenMode && !panelMaximized && !editorPartMaximizedEditorGroup"
+      }
+    ],
+    "configurationDefaults": {
+      "zenMode.fullScreen": false,
+      "zenMode.centerLayout": false,
+      "zenMode.showTabs": "multiple",
+      "zenMode.hideLineNumbers": false,
+      "zenMode.hideStatusBar": false,
+      "zenMode.silentNotifications": false,
+      "terminal.integrated.commandsToSkipShell": [
+        "maximize.maximizeEditor",
+        "maximize.maximizeEditorGroupMaximized",
+        "maximize.maximizePanel",
+        "maximize.toggleSecondarySideBar",
+        "maximize.restore",
+        "maximize.restoreGroupMaximized",
+        "maximize.restorePanelMaximized"
+      ]
+    }
+  }
+}

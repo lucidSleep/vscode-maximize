@@ -1,0 +1,11 @@
+# Left out of the packaged .vsix: only package.json, src/, README.md and LICENSE go in it.
+.vscode/**
+test/**
+node_modules/**
+**/*.vsix
+.editorconfig
+.gitattributes
+.gitignore
+jsconfig.json
+package-lock.json
+CLAUDE.md
