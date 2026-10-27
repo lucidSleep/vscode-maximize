@@ -41,6 +41,8 @@ single source, so don't restate it here.**
   - a web view editor tab (a Markdown preview, for example): Ctrl+M maximizes the editor
   - Esc Esc out of each maximized state, then Ctrl+M: it maximizes or restores cleanly, with no
     half-restored layout
+  - `maximize.showButtons` off: no ⛶ button in the editor or panel title bar, maximized or not,
+    while Ctrl+M and the tab menu still work. Turned back on, the buttons return with no reload
 
 ## Design decisions
 

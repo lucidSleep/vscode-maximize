@@ -271,6 +271,51 @@ function evaluateWhen(expression, context) {
   return result;
 }
 
+test.describe('title-bar buttons', () => {
+  const SHOW_BUTTONS = 'maximize.showButtons';
+  /** @type {Array<{ command: string, when: string }>} */
+  const buttons = [...manifest.contributes.menus['editor/title'], ...manifest.contributes.menus['view/title']];
+
+  /**
+   * Every layout the title-bar `when` clauses can tell apart.
+   * @returns {Array<Record<string, unknown>>}
+   */
+  const allLayouts = () => {
+    /** @type {Array<Record<string, unknown>>} */
+    const layouts = [];
+    const flags = ['inZenMode', 'panelMaximized', 'editorPartMaximizedEditorGroup'];
+    for (let bits = 0; bits < 2 ** flags.length; bits++) {
+      /** @type {Record<string, unknown>} */
+      const context = {};
+      flags.forEach((flag, index) => { context[flag] = (bits & (1 << index)) !== 0; });
+      for (const viewLocation of ['panel', 'sidebar']) {
+        for (const panelAlignment of ['center', 'left']) {
+          for (const panelPosition of ['bottom', 'right']) {
+            layouts.push({ ...context, viewLocation, panelAlignment, panelPosition });
+          }
+        }
+      }
+    }
+    return layouts;
+  };
+
+  test.it('declares the setting, on by default', () => {
+    const setting = manifest.contributes.configuration.properties[SHOW_BUTTONS];
+    assert.equal(setting?.type, 'boolean');
+    assert.equal(setting?.default, true);
+  });
+
+  for (const button of buttons) {
+    test.it(`shows ${button.command} only while ${SHOW_BUTTONS} is on`, () => {
+      const layouts = allLayouts();
+      const shown = layouts.filter((layout) => evaluateWhen(button.when, { ...layout, [`config.${SHOW_BUTTONS}`]: true }));
+      const hidden = layouts.filter((layout) => evaluateWhen(button.when, { ...layout, [`config.${SHOW_BUTTONS}`]: false }));
+      assert.ok(shown.length > 0, `${button.command} is never shown, even with the setting on`);
+      assert.deepEqual(hidden, [], `${button.command} is shown with the setting off`);
+    });
+  }
+});
+
 test.describe('Ctrl+M keybinding rows', () => {
   /** @type {Array<{ command: string, key: string, when: string }>} */
   const keybindings = manifest.contributes.keybindings;

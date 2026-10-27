@@ -2,7 +2,7 @@
   "name": "vscode-maximize",
   "displayName": "Maximize Editor, Terminal & Chat",
   "description": "Maximize whatever has focus (an editor, the terminal panel, or a chat in the secondary side bar) with one key or one button, and restore the layout the same way.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "lucidsleep",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -121,22 +121,22 @@
         {
           "command": "maximize.maximizeEditor",
           "group": "navigation@1000",
-          "when": "!inZenMode && !editorPartMaximizedEditorGroup"
+          "when": "config.maximize.showButtons && !inZenMode && !editorPartMaximizedEditorGroup"
         },
         {
           "command": "maximize.maximizeEditorGroupMaximized",
           "group": "navigation@1000",
-          "when": "!inZenMode && editorPartMaximizedEditorGroup"
+          "when": "config.maximize.showButtons && !inZenMode && editorPartMaximizedEditorGroup"
         },
         {
           "command": "maximize.restore",
           "group": "navigation@1000",
-          "when": "inZenMode && !editorPartMaximizedEditorGroup"
+          "when": "config.maximize.showButtons && inZenMode && !editorPartMaximizedEditorGroup"
         },
         {
           "command": "maximize.restoreGroupMaximized",
           "group": "navigation@1000",
-          "when": "inZenMode && editorPartMaximizedEditorGroup"
+          "when": "config.maximize.showButtons && inZenMode && editorPartMaximizedEditorGroup"
         }
       ],
       "editor/title/context": [
@@ -165,12 +165,12 @@
         {
           "command": "maximize.maximizePanel",
           "group": "navigation@1000",
-          "when": "viewLocation == 'panel' && !inZenMode && !panelMaximized && (panelAlignment == 'center' || (panelPosition != 'bottom' && panelPosition != 'top'))"
+          "when": "config.maximize.showButtons && viewLocation == 'panel' && !inZenMode && !panelMaximized && (panelAlignment == 'center' || (panelPosition != 'bottom' && panelPosition != 'top'))"
         },
         {
           "command": "maximize.restorePanelMaximized",
           "group": "navigation@1000",
-          "when": "viewLocation == 'panel' && panelMaximized"
+          "when": "config.maximize.showButtons && viewLocation == 'panel' && panelMaximized"
         }
       ]
     },
@@ -206,6 +206,16 @@
         "when": "inZenMode && !panelMaximized && !editorPartMaximizedEditorGroup"
       }
     ],
+    "configuration": {
+      "title": "Maximize",
+      "properties": {
+        "maximize.showButtons": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show the ⛶ *Maximize* and *Restore Layout* buttons in the editor and panel title bars. Turn it off to keep only the shortcut (`Ctrl+M` by default), the tab's right-click menu and the Command Palette."
+        }
+      }
+    },
     "configurationDefaults": {
       "zenMode.fullScreen": false,
       "zenMode.centerLayout": false,

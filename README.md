@@ -34,6 +34,10 @@ VS Code's own maximize commands each stop short:
 - **Command Palette:** *Maximize: Maximize Editor*, *Maximize: Maximize Panel (Full Window)* and
   *Maximize: Restore Layout*, each shown only when it applies.
 
+**To keep only the shortcut, turn off `maximize.showButtons`** (Settings → *Maximize: Show
+Buttons*). The title-bar buttons go at once, with no reload. The tab menu and the Command Palette
+entries stay.
+
 ## Install
 
 Requires **VS Code 1.140** or later.
