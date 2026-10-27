@@ -14,7 +14,9 @@ VS Code's own maximize commands each stop short:
 ## What Ctrl+M does
 
 | Focus is in | Ctrl+M maximizes | Ctrl+M again |
-|---|---|---|
+|---|---|---|$$
+
+$$
 | **An editor**: a file, a terminal tab, a chat tab… | **Zen Mode**: side bars, panel and activity bar hidden. With split editors, the active group also fills the editor area. | restores |
 | **The panel**: Terminal, Output, Problems, Debug Console… | **The panel fills the whole window** | restores |
 | **The secondary side bar**, for example a chat | **VS Code's own Maximize Secondary Side Bar** | restores |
@@ -26,9 +28,9 @@ VS Code's own maximize commands each stop short:
 
 ## Buttons and menus
 
-- **Editor title bar:** a ⛶ *Maximize Editor* button, which turns into *Restore Layout*. It comes
-  first among the buttons there: VS Code shows at most 9 and moves the rest into the **⋯** menu, so
-  other extensions' buttons can't push it out.
+- **Editor title bar:** a ⛶ *Maximize Editor* button, which turns into *Restore Layout*. By default
+  it comes first among the buttons there: VS Code shows at most 9 and moves the rest into the **⋯**
+  menu, so other extensions' buttons can't push it out.
 - **A tab's right-click menu:** *Maximize Editor* / *Restore Layout*, acting on that tab's group.
 - **Panel title bar:** ⛶ *Maximize Panel (Full Window)* / *Restore Layout*. It sits next to VS Code's own
   maximize button, which only fills the editor area.
@@ -36,9 +38,14 @@ VS Code's own maximize commands each stop short:
 - **Command Palette:** *Maximize: Maximize Editor*, *Maximize: Maximize Panel (Full Window)* and
   *Maximize: Restore Layout*, each shown only when it applies.
 
-**To keep only the shortcut, turn off `maximize.showButtons`** (Settings → *Maximize: Show
-Buttons*). The title-bar buttons go at once, with no reload. The tab menu and the Command Palette
-entries stay.
+**The buttons have their own settings** (Settings → search for *Maximize*). Changes apply at once,
+with no reload.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `maximize.showButtons` | on | Off hides the title-bar buttons and keeps only the shortcut. The tab menu and the Command Palette entries stay. |
+| `maximize.editorButtonPosition` | `left` | `left`: first among the editor title buttons, always shown. `right`: last, and moved into **⋯** once other extensions fill the title bar. |
+| `maximize.panelButtonPosition` | `right` | `right`: last among the buttons of the panel's view, next to VS Code's own. `left`: first. |
 
 ## Install
 
@@ -77,8 +84,10 @@ Requires **VS Code 1.140** or later.
 (Zen Mode on, panel maximized…) only through a keybinding's `when` clause, so each situation calls its
 own command.
 
-To use another key, open **Keyboard Shortcuts** (Ctrl+K Ctrl+S), search for `maximize.`, and change
-the key of each of the six rows. VS Code keeps each row's `when` clause.
+To use another key, open **Keyboard Shortcuts** filtered on the extension's commands: click *change
+it in Keyboard Shortcuts* under *Maximize: Show Buttons* in Settings, or press Ctrl+K Ctrl+S and
+search for `maximize.`. Then change the key of each of the six rows. VS Code keeps each row's `when`
+clause.
 
 **What Ctrl+M replaces:** VS Code's *Toggle Tab Key Moves Focus*. In a terminal, Ctrl+M is
 the Enter key for the shell, and this extension now takes it there too.

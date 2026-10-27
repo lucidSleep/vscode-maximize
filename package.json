@@ -2,7 +2,7 @@
   "name": "vscode-maximize",
   "displayName": "Maximize Editor, Terminal & Chat",
   "description": "Maximize whatever has focus (an editor, the terminal panel, or a chat in the secondary side bar) with one key or one button, and restore the layout the same way.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "lucidsleep",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -121,22 +121,42 @@
         {
           "command": "maximize.maximizeEditor",
           "group": "navigation@-1000",
-          "when": "config.maximize.showButtons && !inZenMode && !editorPartMaximizedEditorGroup"
+          "when": "config.maximize.showButtons && config.maximize.editorButtonPosition != 'right' && !inZenMode && !editorPartMaximizedEditorGroup"
         },
         {
           "command": "maximize.maximizeEditorGroupMaximized",
           "group": "navigation@-1000",
-          "when": "config.maximize.showButtons && !inZenMode && editorPartMaximizedEditorGroup"
+          "when": "config.maximize.showButtons && config.maximize.editorButtonPosition != 'right' && !inZenMode && editorPartMaximizedEditorGroup"
         },
         {
           "command": "maximize.restore",
           "group": "navigation@-1000",
-          "when": "config.maximize.showButtons && inZenMode && !editorPartMaximizedEditorGroup"
+          "when": "config.maximize.showButtons && config.maximize.editorButtonPosition != 'right' && inZenMode && !editorPartMaximizedEditorGroup"
         },
         {
           "command": "maximize.restoreGroupMaximized",
           "group": "navigation@-1000",
-          "when": "config.maximize.showButtons && inZenMode && editorPartMaximizedEditorGroup"
+          "when": "config.maximize.showButtons && config.maximize.editorButtonPosition != 'right' && inZenMode && editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.maximizeEditor",
+          "group": "navigation@1000",
+          "when": "config.maximize.showButtons && config.maximize.editorButtonPosition == 'right' && !inZenMode && !editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.maximizeEditorGroupMaximized",
+          "group": "navigation@1000",
+          "when": "config.maximize.showButtons && config.maximize.editorButtonPosition == 'right' && !inZenMode && editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.restore",
+          "group": "navigation@1000",
+          "when": "config.maximize.showButtons && config.maximize.editorButtonPosition == 'right' && inZenMode && !editorPartMaximizedEditorGroup"
+        },
+        {
+          "command": "maximize.restoreGroupMaximized",
+          "group": "navigation@1000",
+          "when": "config.maximize.showButtons && config.maximize.editorButtonPosition == 'right' && inZenMode && editorPartMaximizedEditorGroup"
         }
       ],
       "editor/title/context": [
@@ -164,13 +184,23 @@
       "view/title": [
         {
           "command": "maximize.maximizePanel",
+          "group": "navigation@-1000",
+          "when": "config.maximize.showButtons && config.maximize.panelButtonPosition == 'left' && viewLocation == 'panel' && !inZenMode && !panelMaximized && (panelAlignment == 'center' || (panelPosition != 'bottom' && panelPosition != 'top'))"
+        },
+        {
+          "command": "maximize.restorePanelMaximized",
+          "group": "navigation@-1000",
+          "when": "config.maximize.showButtons && config.maximize.panelButtonPosition == 'left' && viewLocation == 'panel' && panelMaximized"
+        },
+        {
+          "command": "maximize.maximizePanel",
           "group": "navigation@1000",
-          "when": "config.maximize.showButtons && viewLocation == 'panel' && !inZenMode && !panelMaximized && (panelAlignment == 'center' || (panelPosition != 'bottom' && panelPosition != 'top'))"
+          "when": "config.maximize.showButtons && config.maximize.panelButtonPosition != 'left' && viewLocation == 'panel' && !inZenMode && !panelMaximized && (panelAlignment == 'center' || (panelPosition != 'bottom' && panelPosition != 'top'))"
         },
         {
           "command": "maximize.restorePanelMaximized",
           "group": "navigation@1000",
-          "when": "config.maximize.showButtons && viewLocation == 'panel' && panelMaximized"
+          "when": "config.maximize.showButtons && config.maximize.panelButtonPosition != 'left' && viewLocation == 'panel' && panelMaximized"
         }
       ]
     },
@@ -212,7 +242,36 @@
         "maximize.showButtons": {
           "type": "boolean",
           "default": true,
-          "markdownDescription": "Show the ⛶ *Maximize* and *Restore Layout* buttons in the editor and panel title bars. Turn it off to keep only the shortcut (`Ctrl+M` by default), the tab's right-click menu and the Command Palette."
+          "order": 1,
+          "markdownDescription": "Show the ⛶ *Maximize* and *Restore Layout* buttons in the editor and panel title bars. Turn it off to keep only the shortcut, the tab's right-click menu and the Command Palette.\n\nThe shortcut is `Ctrl+M` by default: [change it in Keyboard Shortcuts](command:workbench.action.openGlobalKeybindings?%5B%22maximize.%22%5D)."
+        },
+        "maximize.editorButtonPosition": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ],
+          "enumDescriptions": [
+            "First in the row of buttons: always shown.",
+            "Last in the row. VS Code shows at most 9 buttons there, so when other extensions add theirs it moves into the ⋯ menu."
+          ],
+          "default": "left",
+          "order": 2,
+          "markdownDescription": "Where the ⛶ *Maximize Editor* and *Restore Layout* buttons sit in the editor title bar."
+        },
+        "maximize.panelButtonPosition": {
+          "type": "string",
+          "enum": [
+            "left",
+            "right"
+          ],
+          "enumDescriptions": [
+            "First among the buttons of the panel's view, the terminal's for example.",
+            "Last among them, next to VS Code's own panel buttons."
+          ],
+          "default": "right",
+          "order": 3,
+          "markdownDescription": "Where the ⛶ *Maximize Panel (Full Window)* and *Restore Layout* buttons sit in the panel title bar."
         }
       }
     },

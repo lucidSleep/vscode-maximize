@@ -251,6 +251,17 @@ test.describe('package.json', () => {
     }
   });
 
+  test.it('links the settings to Keyboard Shortcuts, filtered on every command of the extension', () => {
+    const description = contributes.configuration.properties['maximize.showButtons'].markdownDescription;
+    const link = /\]\(command:workbench\.action\.openGlobalKeybindings\?([^)]+)\)/.exec(description);
+    assert.ok(link, 'no link to Keyboard Shortcuts in the maximize.showButtons description');
+    // VS Code decodes a command link's query as JSON: a list of the command's arguments.
+    const [query] = JSON.parse(decodeURIComponent(link[1]));
+    for (const command of declared) {
+      assert.ok(command.includes(query), `the "${query}" filter misses ${command}`);
+    }
+  });
+
   test.it('sends every command past the terminal shell', () => {
     const skipList = contributes.configurationDefaults['terminal.integrated.commandsToSkipShell'];
     assert.deepEqual([...skipList].sort(), [...ALL_COMMANDS].sort());
@@ -360,8 +371,36 @@ function evaluateWhen(expression, context) {
 
 test.describe('title-bar buttons', () => {
   const SHOW_BUTTONS = 'maximize.showButtons';
-  /** @type {Array<{ command: string, when: string }>} */
-  const buttons = [...manifest.contributes.menus['editor/title'], ...manifest.contributes.menus['view/title']];
+  const POSITIONS = ['left', 'right'];
+  /** Each title-bar menu, with the setting that picks the end its buttons sit at. */
+  const POSITION_SETTINGS = Object.entries({
+    'editor/title': 'maximize.editorButtonPosition',
+    'view/title': 'maximize.panelButtonPosition',
+  });
+  /** @type {Record<string, Array<{ command: string, group: string, when: string }>>} */
+  const menus = {
+    'editor/title': manifest.contributes.menus['editor/title'],
+    'view/title': manifest.contributes.menus['view/title'],
+  };
+  const buttons = [...menus['editor/title'], ...menus['view/title']];
+
+  /**
+   * @param {Readonly<Record<string, unknown>>} layout
+   * @param {boolean} showButtons
+   * @param {string} position the value of both position settings
+   * @returns {Record<string, unknown>} the layout with the extension's settings set
+   */
+  const withSettings = (layout, showButtons, position) => ({
+    ...layout,
+    [`config.${SHOW_BUTTONS}`]: showButtons,
+    ...Object.fromEntries(POSITION_SETTINGS.map(([, setting]) => [`config.${setting}`, position])),
+  });
+
+  /**
+   * @param {{ group: string }} button
+   * @returns {number} its order in its group: `navigation@-1000` is -1000
+   */
+  const orderOf = (button) => Number(button.group.split('@')[1]);
 
   /**
    * Every layout the title-bar `when` clauses can tell apart.
@@ -386,31 +425,58 @@ test.describe('title-bar buttons', () => {
     return layouts;
   };
 
-  test.it('declares the setting, on by default', () => {
-    const setting = manifest.contributes.configuration.properties[SHOW_BUTTONS];
-    assert.equal(setting?.type, 'boolean');
-    assert.equal(setting?.default, true);
+  test.it('declares the settings, with their defaults', () => {
+    const properties = manifest.contributes.configuration.properties;
+    assert.equal(properties[SHOW_BUTTONS]?.type, 'boolean');
+    assert.equal(properties[SHOW_BUTTONS]?.default, true);
+    assert.deepEqual(properties['maximize.editorButtonPosition']?.enum, POSITIONS);
+    assert.equal(properties['maximize.editorButtonPosition']?.default, 'left');
+    assert.deepEqual(properties['maximize.panelButtonPosition']?.enum, POSITIONS);
+    assert.equal(properties['maximize.panelButtonPosition']?.default, 'right');
   });
 
-  test.it('puts the editor title buttons ahead of other extensions\' buttons', () => {
+  test.it('shows each button once, at the end its position setting names', () => {
     // VS Code shows at most 9 editor title buttons and moves the rest into the ⋯ menu, in menu
-    // order. Other extensions' buttons sit at order 0 by default, and GitLens's go down to -101.
-    /** @type {Array<{ command: string, group: string }>} */
-    const editorButtons = manifest.contributes.menus['editor/title'];
-    for (const button of editorButtons) {
-      const [group, order] = button.group.split('@');
-      assert.equal(group, 'navigation', `${button.command} is not a title-bar button`);
-      assert.ok(Number(order) <= -1000, `${button.command} sorts too late, at ${button.group}`);
+    // order. Other extensions' buttons sit at order 0 by default, and GitLens's go from -101 to
+    // 101, so at -1000 ours always stays.
+    for (const [menu, setting] of POSITION_SETTINGS) {
+      for (const position of POSITIONS) {
+        for (const layout of allLayouts()) {
+          const shown = menus[menu].filter((button) => evaluateWhen(button.when, withSettings(layout, true, position)));
+          const commands = shown.map((button) => button.command);
+          assert.equal(new Set(commands).size, commands.length,
+            `${menu} shows ${commands.join(', ')} with ${setting} ${position} in ${JSON.stringify(layout)}`);
+          for (const button of shown) {
+            const order = orderOf(button);
+            assert.ok(position === 'left' ? order <= -1000 : order >= 1000,
+              `${button.command} sits at ${button.group} with ${setting} ${position}`);
+          }
+        }
+      }
+    }
+  });
+
+  test.it('shows a button in the same layouts at either end', () => {
+    for (const [menu, setting] of POSITION_SETTINGS) {
+      for (const command of new Set(menus[menu].map((button) => button.command))) {
+        for (const layout of allLayouts()) {
+          /** @param {string} position */
+          const shownAt = (position) => menus[menu].some((button) =>
+            button.command === command && evaluateWhen(button.when, withSettings(layout, true, position)));
+          assert.equal(shownAt('left'), shownAt('right'),
+            `${command} shows at one end only, by ${setting}, in ${JSON.stringify(layout)}`);
+        }
+      }
     }
   });
 
   for (const button of buttons) {
-    test.it(`shows ${button.command} only while ${SHOW_BUTTONS} is on`, () => {
-      const layouts = allLayouts();
-      const shown = layouts.filter((layout) => evaluateWhen(button.when, { ...layout, [`config.${SHOW_BUTTONS}`]: true }));
-      const hidden = layouts.filter((layout) => evaluateWhen(button.when, { ...layout, [`config.${SHOW_BUTTONS}`]: false }));
-      assert.ok(shown.length > 0, `${button.command} is never shown, even with the setting on`);
-      assert.deepEqual(hidden, [], `${button.command} is shown with the setting off`);
+    test.it(`shows ${button.command} at ${button.group} only while ${SHOW_BUTTONS} is on`, () => {
+      const settings = allLayouts().flatMap((layout) => POSITIONS.map((position) => ({ layout, position })));
+      const shown = settings.filter(({ layout, position }) => evaluateWhen(button.when, withSettings(layout, true, position)));
+      const hidden = settings.filter(({ layout, position }) => evaluateWhen(button.when, withSettings(layout, false, position)));
+      assert.ok(shown.length > 0, `${button.command} at ${button.group} is never shown, even with the setting on`);
+      assert.deepEqual(hidden, [], `${button.command} at ${button.group} is shown with the setting off`);
     });
   }
 });

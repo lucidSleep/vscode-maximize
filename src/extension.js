@@ -8,8 +8,16 @@ const SKIP_LIST_SECTION = 'terminal.integrated';
 const SKIP_LIST_KEY = 'commandsToSkipShell';
 /** globalState key: the user chose "Don't Ask Again" on the skip-list warning. */
 const SKIP_LIST_PROMPT_DISMISSED = 'skipListPromptDismissed';
-/** globalState key: the keybinding conflicts already reported, so each is reported only once. */
-const REPORTED_KEYBINDING_CONFLICTS = 'reportedKeybindingConflicts';
+/**
+ * globalState key: the keybinding conflicts whose warning the user closed or acted on. 0.2.1 stored
+ * them under another key as soon as the warning showed, so a warning missed then shows once more.
+ */
+const ACKNOWLEDGED_KEYBINDING_CONFLICTS = 'acknowledgedKeybindingConflicts';
+/**
+ * The keybinding conflicts already warned about in this window, answered or not.
+ * @type {Set<string>}
+ */
+const conflictsWarnedThisSession = new Set();
 
 /** @param {vscode.ExtensionContext} context */
 function activate(context) {
@@ -120,8 +128,10 @@ async function checkTerminalSkipList(context, log) {
 }
 
 /**
- * Warns, once per binding, when another extension binds the maximize key in a way VS Code ranks
- * above ours: wherever that binding's `when` clause holds, the key runs its command instead.
+ * Warns when another extension binds the maximize key in a way VS Code ranks above ours: wherever
+ * that binding's `when` clause holds, the key runs its command instead. Each conflict is warned
+ * about once per window, until the user closes the warning or clicks its button. A warning left
+ * unanswered hides in the notification center after a few seconds, and shows again next session.
  * @param {vscode.ExtensionContext} context
  * @param {vscode.LogOutputChannel} log
  * @returns {Promise<void>}
@@ -132,15 +142,17 @@ async function checkKeybindingConflicts(context, log) {
     .map(describeExtension);
   const conflicts = findKeybindingConflicts(
     context.extension.packageJSON.contributes?.keybindings, others, keybindingPlatform());
-  const stored = context.globalState.get(REPORTED_KEYBINDING_CONFLICTS);
-  const reported = Array.isArray(stored) ? stored.filter((entry) => typeof entry === 'string') : [];
-  const fresh = conflicts.filter((conflict) => !reported.includes(conflictId(conflict)));
+  const acknowledged = acknowledgedConflicts(context);
+  const fresh = conflicts.filter((conflict) => {
+    const id = conflictId(conflict);
+    return !acknowledged.includes(id) && !conflictsWarnedThisSession.has(id);
+  });
   if (fresh.length === 0) {
     return;
   }
 
-  // Recorded before the warning shows, so a check that runs while it is still open doesn't repeat it.
-  await context.globalState.update(REPORTED_KEYBINDING_CONFLICTS, [...reported, ...fresh.map(conflictId)]);
+  const ids = fresh.map(conflictId);
+  ids.forEach((id) => conflictsWarnedThisSession.add(id));
   for (const conflict of fresh) {
     log.warn(`${conflict.extensionId} binds ${conflict.key} to ${conflict.command}, which VS Code runs ` +
       `instead of ${conflict.outranked.join(', ')} wherever its when clause holds.`);
@@ -153,10 +165,28 @@ async function checkKeybindingConflicts(context, log) {
       'maximize shortcut wherever both apply. Remove or change one of them in Keyboard Shortcuts.',
     'Show Shortcuts',
   );
+
+  // Closed or acted on: recorded, so it doesn't come back. Not in the Extension Development Host,
+  // which shares globalState with the installed copy: recording there would keep the warning from
+  // it, and from the next F5 run.
+  if (context.extensionMode !== vscode.ExtensionMode.Development) {
+    // Read again: another window may have recorded some while this warning was open.
+    const recorded = new Set([...acknowledgedConflicts(context), ...ids]);
+    await context.globalState.update(ACKNOWLEDGED_KEYBINDING_CONFLICTS, [...recorded]);
+  }
   if (choice === 'Show Shortcuts') {
     // In double quotes, Keyboard Shortcuts matches the key exactly: it lists every row bound to it.
     await vscode.commands.executeCommand('workbench.action.openGlobalKeybindings', `"${fresh[0].key}"`);
   }
+}
+
+/**
+ * @param {vscode.ExtensionContext} context
+ * @returns {string[]} the IDs of the conflicts whose warning the user closed or acted on
+ */
+function acknowledgedConflicts(context) {
+  const stored = context.globalState.get(ACKNOWLEDGED_KEYBINDING_CONFLICTS);
+  return Array.isArray(stored) ? stored.filter((entry) => typeof entry === 'string') : [];
 }
 
 /**
