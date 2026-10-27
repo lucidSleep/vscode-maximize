@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Source of images/icon.png, which the Marketplace needs as a PNG. Amber Dark palette. -->
+  <rect x="6" y="6" width="244" height="244" rx="52" fill="#16161a" stroke="#35353f" stroke-width="4"/>
+
+  <!-- The focused part, in the middle of the window. -->
+  <rect x="84" y="90" width="88" height="76" rx="10" fill="rgba(224, 153, 74, 0.14)" stroke="#e0994a" stroke-width="10"/>
+  <line x1="84" y1="112" x2="172" y2="112" stroke="#e0994a" stroke-width="8"/>
+
+  <!-- It grows to the window's corners. -->
+  <g fill="none" stroke="#f0ac5e" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M48 92 V48 H92"/>
+    <path d="M164 48 H208 V92"/>
+    <path d="M208 164 V208 H164"/>
+    <path d="M92 208 H48 V164"/>
+  </g>
+</svg>

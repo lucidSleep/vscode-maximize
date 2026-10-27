@@ -18,6 +18,10 @@ single source, so don't restate it here.**
   (`reportFailure()`).
 - **This repo is public on GitHub:** no personal paths, internal hostnames or user names in
   committed files.
+- **`images/icon.png` is rendered from `images/icon.svg`**, because the Marketplace refuses SVG
+  icons. After changing the SVG, render it again at 256×256 with a transparent background, for
+  example with headless Edge: `msedge --headless=new --default-background-color=00000000
+  --window-size=256,256 --screenshot=<repo>/images/icon.png file:///<repo>/images/icon.svg`
 
 ## Testing a change
 
@@ -59,4 +63,4 @@ single source, so don't restate it here.**
   everything else.
 - **Not done yet (ideas):**
   - maximizing the primary side bar (VS Code has no maximize for it)
-  - an icon and a Marketplace listing
+  - the Marketplace listing: the package and the `lucidsleep` publisher are ready, the upload isn't done

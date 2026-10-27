@@ -1,4 +1,4 @@
-# Maximize
+# Maximize Editor, Terminal & Chat
 
 **One key (Ctrl+M) or one button maximizes whatever you are working in:** an editor, the terminal,
 or a chat in the secondary side bar. **The same key or button puts the layout back** the way it was.
@@ -36,13 +36,14 @@ VS Code's own maximize commands each stop short:
 
 ## Install
 
-**Not on the Visual Studio Marketplace yet:** build the package from the source. Requires
-**VS Code 1.140** or later, and Node.js to build.
+Requires **VS Code 1.140** or later.
 
-1. Get the source: `git clone https://github.com/lucidSleep/vscode-maximize.git`
-2. Build the package: `npm install`, then `npm run package`. This writes `vscode-maximize-<version>.vsix`.
-3. Install it: `code --install-extension vscode-maximize-<version>.vsix`, or in the Extensions view, the
-   **…** menu → **Install from VSIX…**
+- **From the Visual Studio Marketplace:** search for *Maximize Editor, Terminal & Chat* in the
+  Extensions view, or run `code --install-extension lucidsleep.vscode-maximize`.
+- **From the source:** `git clone https://github.com/lucidSleep/vscode-maximize.git`, then
+  `npm install` and `npm run package`, which writes `vscode-maximize-<version>.vsix`. Install it with
+  `code --install-extension vscode-maximize-<version>.vsix`, or in the Extensions view, the **…** menu
+  → **Install from VSIX…**
 
 ## Settings it changes
 

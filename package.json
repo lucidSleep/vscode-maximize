@@ -1,10 +1,15 @@
 {
   "name": "vscode-maximize",
-  "displayName": "Maximize",
+  "displayName": "Maximize Editor, Terminal & Chat",
   "description": "Maximize whatever has focus (an editor, the terminal panel, or a chat in the secondary side bar) with one key or one button, and restore the layout the same way.",
   "version": "0.1.0",
   "publisher": "lucidsleep",
   "license": "MIT",
+  "icon": "images/icon.png",
+  "galleryBanner": {
+    "color": "#16161a",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/lucidSleep/vscode-maximize.git"

@@ -1,4 +1,5 @@
-# Left out of the packaged .vsix: only package.json, src/, README.md and LICENSE go in it.
+# Left out of the packaged .vsix: only package.json, src/, README.md, LICENSE and the icon PNG go in it.
+images/*.svg
 .vscode/**
 test/**
 node_modules/**
