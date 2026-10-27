@@ -43,6 +43,9 @@ single source, so don't restate it here.**
     half-restored layout
   - `maximize.showButtons` off: no ⛶ button in the editor or panel title bar, maximized or not,
     while Ctrl+M and the tab menu still work. Turned back on, the buttons return with no reload
+  - a Markdown file with *Markdown All in One* and its buttons on
+    (`markdown.extension.showActionButtons`): the ⛶ button stays, first in the row. The Ctrl+M
+    conflict warning shows once, and *Show Shortcuts* lists every Ctrl+M row, theirs included
 
 ## Design decisions
 
@@ -75,5 +78,13 @@ single source, so don't restate it here.**
   - **the editor row needs `editorAreaFocus` or `sideBarFocus`**, not just "not the panel or the
     secondary side bar"
   - **a key from no part goes to the secondary side bar row** when that bar is visible
+- **The editor title buttons sort first (`navigation@-1000`).** VS Code shows at most 9 editor
+  title buttons and moves the rest into ⋯ in menu order. Ours, last in that order, went first once
+  other extensions added theirs. The panel's view toolbar has no such cap.
+- **Another extension's binding can outrank our Ctrl+M rows, and no row order prevents it.** VS
+  Code ranks an extension's keybinding by its position in its own list, then by command ID, never
+  by `when`, and six rows can't all sit late enough. So `findKeybindingConflicts()` applies that
+  ranking and `checkKeybindingConflicts()` warns once per conflict. What users see is in the
+  README's *Changing the shortcut*.
 - **Not done yet (ideas):**
   - maximizing the primary side bar (VS Code has no maximize for it)

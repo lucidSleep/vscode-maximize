@@ -26,7 +26,9 @@ VS Code's own maximize commands each stop short:
 
 ## Buttons and menus
 
-- **Editor title bar:** a ⛶ *Maximize Editor* button, which turns into *Restore Layout*.
+- **Editor title bar:** a ⛶ *Maximize Editor* button, which turns into *Restore Layout*. It comes
+  first among the buttons there: VS Code shows at most 9 and moves the rest into the **⋯** menu, so
+  other extensions' buttons can't push it out.
 - **A tab's right-click menu:** *Maximize Editor* / *Restore Layout*, acting on that tab's group.
 - **Panel title bar:** ⛶ *Maximize Panel (Full Window)* / *Restore Layout*. It sits next to VS Code's own
   maximize button, which only fills the editor area.
@@ -80,6 +82,16 @@ the key of each of the six rows. VS Code keeps each row's `when` clause.
 
 **What Ctrl+M replaces:** VS Code's *Toggle Tab Key Moves Focus*. In a terminal, Ctrl+M is
 the Enter key for the shell, and this extension now takes it there too.
+
+**Another extension that also binds Ctrl+M may win.** Between two extensions, VS Code doesn't look at
+which `when` clause is more specific. It ranks each binding by its position in its own extension's
+list. *Markdown All in One*, for example, takes Ctrl+M in Markdown files for *Toggle math
+environment*, which types `$$`.
+
+- **The extension warns once for each such binding.** Its *Show Shortcuts* button lists every Ctrl+M
+  row in Keyboard Shortcuts: right-click the other extension's row to remove it or change its key.
+- **Or remove it in `keybindings.json`**, for example
+  `{ "key": "ctrl+m", "command": "-markdown.extension.editing.toggleMath" }`.
 
 ## Limitations
 

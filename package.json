@@ -2,7 +2,7 @@
   "name": "vscode-maximize",
   "displayName": "Maximize Editor, Terminal & Chat",
   "description": "Maximize whatever has focus (an editor, the terminal panel, or a chat in the secondary side bar) with one key or one button, and restore the layout the same way.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "lucidsleep",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -120,22 +120,22 @@
       "editor/title": [
         {
           "command": "maximize.maximizeEditor",
-          "group": "navigation@1000",
+          "group": "navigation@-1000",
           "when": "config.maximize.showButtons && !inZenMode && !editorPartMaximizedEditorGroup"
         },
         {
           "command": "maximize.maximizeEditorGroupMaximized",
-          "group": "navigation@1000",
+          "group": "navigation@-1000",
           "when": "config.maximize.showButtons && !inZenMode && editorPartMaximizedEditorGroup"
         },
         {
           "command": "maximize.restore",
-          "group": "navigation@1000",
+          "group": "navigation@-1000",
           "when": "config.maximize.showButtons && inZenMode && !editorPartMaximizedEditorGroup"
         },
         {
           "command": "maximize.restoreGroupMaximized",
-          "group": "navigation@1000",
+          "group": "navigation@-1000",
           "when": "config.maximize.showButtons && inZenMode && editorPartMaximizedEditorGroup"
         }
       ],

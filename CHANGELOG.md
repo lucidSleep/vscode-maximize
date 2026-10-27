@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1 (2026-10-27)
+
+- **Fixed: the ⛶ button vanished into the ⋯ menu** in editors where other extensions add many
+  buttons, Markdown files for example. It now comes first in the editor title bar.
+- **A warning when another extension's shortcut takes Ctrl+M first**, such as Markdown All in
+  One's *Toggle math environment*, which typed `$$` in Markdown files. It shows once per
+  conflicting shortcut, with a button that lists them in Keyboard Shortcuts. See
+  [Changing the shortcut](README.md#changing-the-shortcut).
+
 ## 0.2.0 (2026-10-27)
 
 - **New setting `maximize.showButtons`:** turn it off to hide the ⛶ *Maximize* and *Restore

@@ -33,6 +33,27 @@
  * @property {SettingScope} scope where the list is set
  * @property {string[]} list the list as set there
  * @property {string[]} missing the commands it leaves out
+ *
+ * @typedef {'win' | 'mac' | 'linux'} KeybindingPlatform which of a binding's keys VS Code uses
+ *
+ * @typedef {object} OtherExtension another installed extension, as far as its keybindings go
+ * @property {string} id
+ * @property {string} name its display name
+ * @property {boolean} builtIn shipped with VS Code
+ * @property {unknown} keybindings its `contributes.keybindings`, as declared
+ *
+ * @typedef {object} KeybindingConflict another extension's keybinding that VS Code runs instead of
+ *   ours, wherever its `when` clause holds
+ * @property {string} extensionId
+ * @property {string} extensionName
+ * @property {string} command its command
+ * @property {string} key its key, normalized: `ctrl+m`, chords separated by a space
+ * @property {string[]} outranked our commands bound to that key that it runs ahead of
+ *
+ * @typedef {object} RankedKeybinding a contributed keybinding, with the weight VS Code ranks it by
+ * @property {string} command
+ * @property {string[]} chords its key, one normalized entry per chord
+ * @property {number} weight
  */
 
 /** The built-in VS Code commands this extension drives. */
@@ -165,9 +186,129 @@ function findSkipListGap(inspection) {
   return undefined; // nothing set: the default from package.json applies
 }
 
+/**
+ * How VS Code ranks the keybindings extensions contribute (`KeybindingWeight` in its source). Each
+ * gets its base weight plus its 1-based position in its own extension's list. Where several match
+ * the key and their `when` clauses, the highest weight runs, and on equal weights the command ID
+ * that sorts last. So a binding late in a long list beats one early in a short list, whatever the
+ * `when` clauses say, and no row order in package.json can put all of ours first.
+ */
+const KEYBINDING_WEIGHT = Object.freeze({ builtInExtension: 300, extension: 400 });
+
+/** The modifiers in a fixed order, so equal keys spelled differently compare equal. */
+const MODIFIER_ORDER = Object.freeze(['ctrl', 'shift', 'alt', 'meta']);
+/** A modifier at the start of a chord, as VS Code spells it: `cmd` and `win` both mean `meta`. */
+const MODIFIER_PREFIX = /^(ctrl|shift|alt|meta|cmd|win)[+-]/;
+
+/**
+ * Finds other extensions' keybindings that VS Code runs instead of ours: same key, ranked higher.
+ * Their `when` clauses can't be evaluated here, so each one found takes the key only where its
+ * `when` holds. Markdown All in One's Ctrl+M, for example, takes it in Markdown editors.
+ *
+ * Only the keys package.json declares are known: a key the user rebound in Keyboard Shortcuts, or a
+ * binding they removed there, is invisible to extensions.
+ * @param {unknown} ours this extension's `contributes.keybindings`
+ * @param {readonly OtherExtension[]} others
+ * @param {KeybindingPlatform} platform
+ * @returns {KeybindingConflict[]}
+ */
+function findKeybindingConflicts(ours, others, platform) {
+  const ourRows = rankKeybindings(ours, false, platform);
+  const ourCommands = new Set(Object.keys(COMMAND_REQUESTS));
+  /** @type {KeybindingConflict[]} */
+  const conflicts = [];
+  for (const extension of others) {
+    for (const theirs of rankKeybindings(extension.keybindings, extension.builtIn, platform)) {
+      if (ourCommands.has(theirs.command)) {
+        continue; // it binds one of our own commands: the key does what ours would
+      }
+      const outranked = ourRows
+        .filter((mine) => chordsOverlap(mine.chords, theirs.chords) && outranks(theirs, mine))
+        .map((mine) => mine.command);
+      if (outranked.length > 0) {
+        conflicts.push({
+          extensionId: extension.id,
+          extensionName: extension.name,
+          command: theirs.command,
+          key: theirs.chords.join(' '),
+          outranked,
+        });
+      }
+    }
+  }
+  return conflicts;
+}
+
+/**
+ * The keybindings an extension contributes for a platform, with their weights.
+ * @param {unknown} contributed `contributes.keybindings`: a list, or a single binding
+ * @param {boolean} builtIn
+ * @param {KeybindingPlatform} platform
+ * @returns {RankedKeybinding[]}
+ */
+function rankKeybindings(contributed, builtIn, platform) {
+  const bindings = Array.isArray(contributed) ? contributed : contributed === undefined ? [] : [contributed];
+  const baseWeight = builtIn ? KEYBINDING_WEIGHT.builtInExtension : KEYBINDING_WEIGHT.extension;
+  /** @type {RankedKeybinding[]} */
+  const ranked = [];
+  bindings.forEach((binding, index) => {
+    // Skipped bindings still count for the position, as in VS Code.
+    if (binding === null || typeof binding !== 'object' || typeof binding.command !== 'string'
+      || binding.command.startsWith('-')) {
+      return;
+    }
+    // VS Code takes the platform's own key when it's set, else `key`.
+    const key = binding[platform] || binding.key;
+    if (typeof key !== 'string' || key.trim() === '') {
+      return; // no key on this platform
+    }
+    const chords = key.trim().toLowerCase().split(/\s+/).map(normalizeChord);
+    ranked.push({ command: binding.command, chords, weight: baseWeight + index + 1 });
+  });
+  return ranked;
+}
+
+/**
+ * @param {string} chord one chord, lower case: `shift+ctrl+m`
+ * @returns {string} its modifiers in a fixed order, then its key: `ctrl+shift+m`
+ */
+function normalizeChord(chord) {
+  /** @type {Set<string>} */
+  const modifiers = new Set();
+  let rest = chord;
+  let match = MODIFIER_PREFIX.exec(rest);
+  while (match !== null) {
+    modifiers.add(match[1] === 'cmd' || match[1] === 'win' ? 'meta' : match[1]);
+    rest = rest.slice(match[0].length);
+    match = MODIFIER_PREFIX.exec(rest);
+  }
+  return [...MODIFIER_ORDER.filter((modifier) => modifiers.has(modifier)), rest].join('+');
+}
+
+/**
+ * Two keys compete when one starts with the other: a chord starting with Ctrl+M takes Ctrl+M too.
+ * @param {readonly string[]} first
+ * @param {readonly string[]} second
+ * @returns {boolean}
+ */
+function chordsOverlap(first, second) {
+  const [shorter, longer] = first.length <= second.length ? [first, second] : [second, first];
+  return shorter.every((chord, index) => longer[index] === chord);
+}
+
+/**
+ * @param {RankedKeybinding} candidate
+ * @param {RankedKeybinding} other
+ * @returns {boolean} VS Code runs `candidate` rather than `other` where both match
+ */
+function outranks(candidate, other) {
+  return candidate.weight !== other.weight ? candidate.weight > other.weight : candidate.command > other.command;
+}
+
 module.exports = {
   BUILT_IN,
   COMMAND_REQUESTS,
+  findKeybindingConflicts,
   findSkipListGap,
   runToggle,
 };

@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { BUILT_IN, COMMAND_REQUESTS, findSkipListGap, runToggle } = require('../src/maximize');
+const { BUILT_IN, COMMAND_REQUESTS, findKeybindingConflicts, findSkipListGap, runToggle } = require('../src/maximize');
 const manifest = require('../package.json');
 
 const ALL_COMMANDS = Object.keys(COMMAND_REQUESTS);
@@ -135,6 +135,93 @@ test.describe('findSkipListGap', () => {
 
   test.it('leaves a malformed value to VS Code', () => {
     assert.equal(findSkipListGap({ globalValue: 'maximize.restore' }), undefined);
+  });
+});
+
+test.describe('findKeybindingConflicts', () => {
+  const OURS = [{ command: 'maximize.maximizeEditor', key: 'ctrl+m', when: 'editorAreaFocus' }];
+
+  /**
+   * Another extension whose keybinding list has `binding` at `position` (1-based), after bindings
+   * of unrelated keys.
+   * @param {object} binding
+   * @param {number} [position]
+   * @param {boolean} [builtIn]
+   * @returns {import('../src/maximize').OtherExtension}
+   */
+  const extensionWith = (binding, position = 1, builtIn = false) => ({
+    id: 'other.extension',
+    name: 'Other Extension',
+    builtIn,
+    keybindings: [
+      ...Array.from({ length: position - 1 }, (_, index) => ({ command: `other.filler${index}`, key: `ctrl+f${index + 1}` })),
+      binding,
+    ],
+  });
+
+  /**
+   * @param {object} binding
+   * @param {{ position?: number, builtIn?: boolean, platform?: import('../src/maximize').KeybindingPlatform }} [options]
+   * @returns {string[]} the commands found to outrank ours
+   */
+  const conflictingCommands = (binding, { position = 1, builtIn = false, platform = 'win' } = {}) =>
+    findKeybindingConflicts(OURS, [extensionWith(binding, position, builtIn)], platform)
+      .map((conflict) => conflict.command);
+
+  test.it("finds Markdown All in One's Ctrl+M ahead of the editor row", () => {
+    // Its toggleMath binding is 6th in its list, with this `when` clause.
+    const toggleMath = {
+      command: 'markdown.extension.editing.toggleMath',
+      key: 'ctrl+m',
+      mac: 'cmd+m',
+      when: 'editorTextFocus && !editorReadonly && editorLangId =~ /^markdown$|^rmd$|^quarto$/',
+    };
+    const conflicts = findKeybindingConflicts(manifest.contributes.keybindings,
+      [{ ...extensionWith(toggleMath, 6), id: 'yzhang.markdown-all-in-one', name: 'Markdown All in One' }], 'win');
+    assert.equal(conflicts.length, 1);
+    assert.equal(conflicts[0].extensionName, 'Markdown All in One');
+    assert.equal(conflicts[0].key, 'ctrl+m');
+    assert.ok(conflicts[0].outranked.includes('maximize.maximizeEditor'), conflicts[0].outranked.join(', '));
+  });
+
+  test.it('ranks by position in each list, then by command ID, as VS Code does', () => {
+    assert.deepEqual(conflictingCommands({ command: 'other.later', key: 'ctrl+m' }, { position: 2 }), ['other.later']);
+    // Same position: the command ID that sorts last wins.
+    assert.deepEqual(conflictingCommands({ command: 'zz.sortsLater', key: 'ctrl+m' }), ['zz.sortsLater']);
+    assert.deepEqual(conflictingCommands({ command: 'aa.sortsEarlier', key: 'ctrl+m' }), []);
+  });
+
+  test.it('ranks built-in extensions below every other extension', () => {
+    assert.deepEqual(conflictingCommands({ command: 'builtin.command', key: 'ctrl+m' }, { position: 50, builtIn: true }), []);
+  });
+
+  test.it("reads each binding's key for the platform", () => {
+    const macOnlyDifferent = { command: 'other.command', key: 'ctrl+m', mac: 'cmd+m' };
+    assert.deepEqual(conflictingCommands(macOnlyDifferent, { position: 2, platform: 'win' }), ['other.command']);
+    assert.deepEqual(conflictingCommands(macOnlyDifferent, { position: 2, platform: 'mac' }), []);
+    const windowsOnly = { command: 'other.command', key: 'ctrl+x', win: 'ctrl+m' };
+    assert.deepEqual(conflictingCommands(windowsOnly, { position: 2, platform: 'win' }), ['other.command']);
+    assert.deepEqual(conflictingCommands(windowsOnly, { position: 2, platform: 'linux' }), []);
+  });
+
+  test.it('compares keys however they are spelled, chords included', () => {
+    assert.deepEqual(conflictingCommands({ command: 'other.upper', key: 'Ctrl+M' }, { position: 2 }), ['other.upper']);
+    assert.deepEqual(conflictingCommands({ command: 'other.chord', key: 'ctrl+m ctrl+x' }, { position: 2 }), ['other.chord']);
+    assert.deepEqual(conflictingCommands({ command: 'other.chord', key: 'ctrl+k ctrl+m' }, { position: 2 }), []);
+    const shifted = [{ command: 'maximize.restore', key: 'shift+ctrl+m' }];
+    const conflicts = findKeybindingConflicts(shifted, [extensionWith({ command: 'other.command', key: 'ctrl+shift+m' }, 2)], 'win');
+    assert.deepEqual(conflicts.map((conflict) => conflict.key), ['ctrl+shift+m']);
+  });
+
+  test.it('skips bindings with no command, a removal, or one of our own commands', () => {
+    assert.deepEqual(conflictingCommands({ key: 'ctrl+m' }, { position: 2 }), []);
+    assert.deepEqual(conflictingCommands({ command: '-other.command', key: 'ctrl+m' }, { position: 2 }), []);
+    assert.deepEqual(conflictingCommands({ command: 'maximize.restore', key: 'ctrl+m' }, { position: 2 }), []);
+  });
+
+  test.it('accepts a single binding in place of a list', () => {
+    const single = { id: 'other.extension', name: 'Other', builtIn: false, keybindings: { command: 'zz.command', key: 'ctrl+m' } };
+    assert.deepEqual(findKeybindingConflicts(OURS, [single], 'win').map((conflict) => conflict.command), ['zz.command']);
   });
 });
 
@@ -303,6 +390,18 @@ test.describe('title-bar buttons', () => {
     const setting = manifest.contributes.configuration.properties[SHOW_BUTTONS];
     assert.equal(setting?.type, 'boolean');
     assert.equal(setting?.default, true);
+  });
+
+  test.it('puts the editor title buttons ahead of other extensions\' buttons', () => {
+    // VS Code shows at most 9 editor title buttons and moves the rest into the ⋯ menu, in menu
+    // order. Other extensions' buttons sit at order 0 by default, and GitLens's go down to -101.
+    /** @type {Array<{ command: string, group: string }>} */
+    const editorButtons = manifest.contributes.menus['editor/title'];
+    for (const button of editorButtons) {
+      const [group, order] = button.group.split('@');
+      assert.equal(group, 'navigation', `${button.command} is not a title-bar button`);
+      assert.ok(Number(order) <= -1000, `${button.command} sorts too late, at ${button.group}`);
+    }
   });
 
   for (const button of buttons) {
