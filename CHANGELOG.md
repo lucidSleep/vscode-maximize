@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 (2026-10-27)
+
+- **Fixed: the *What Ctrl+M does* table in the README showed as run-on text**, on the
+  Marketplace's *Details* tab and on GitHub. Stray math blocks had been typed into it in 0.3.0.
+
 ## 0.3.0 (2026-10-27)
 
 - **New settings `maximize.editorButtonPosition` and `maximize.panelButtonPosition`:** put the ⛶

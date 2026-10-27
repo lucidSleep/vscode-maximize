@@ -14,9 +14,7 @@ VS Code's own maximize commands each stop short:
 ## What Ctrl+M does
 
 | Focus is in | Ctrl+M maximizes | Ctrl+M again |
-|---|---|---|$$
-
-$$
+|---|---|---|
 | **An editor**: a file, a terminal tab, a chat tab… | **Zen Mode**: side bars, panel and activity bar hidden. With split editors, the active group also fills the editor area. | restores |
 | **The panel**: Terminal, Output, Problems, Debug Console… | **The panel fills the whole window** | restores |
 | **The secondary side bar**, for example a chat | **VS Code's own Maximize Secondary Side Bar** | restores |
