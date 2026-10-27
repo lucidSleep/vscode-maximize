@@ -18,6 +18,8 @@ single source, so don't restate it here.**
   (`reportFailure()`).
 - **This repo is public on GitHub:** no personal paths, internal hostnames or user names in
   committed files.
+- **Every release gets a [CHANGELOG.md](CHANGELOG.md) entry**, listing only changes a user would
+  notice. The Marketplace shows it as the extension's *Changelog* tab.
 - **`images/icon.png` is rendered from `images/icon.svg`**, because the Marketplace refuses SVG
   icons. After changing the SVG, render it again at 256×256 with a transparent background, for
   example with headless Edge: `msedge --headless=new --default-background-color=00000000
@@ -25,15 +27,18 @@ single source, so don't restate it here.**
 
 ## Testing a change
 
-- **Automated:** `npm test` (unit tests + `package.json` consistency) and `npm run check`. Run both
-  after every change.
+- **Automated:** `npm test` (unit tests, `package.json` consistency, and the Ctrl+M rows' `when`
+  clauses evaluated for each situation) and `npm run check`. Run both after every change.
 - **By hand, in a real VS Code, after any change to `package.json` or `maximize.js`:** the tests
-  can't evaluate `when` clauses. Press F5, then, in the Extension Development Host:
+  evaluate the `when` clauses only against the context values they assume VS Code sets. Press F5,
+  then, in the Extension Development Host:
   - editor, one group: Ctrl+M maximizes, Ctrl+M restores the side bars and panel that were open
   - editor, two split groups: the same, and only the active group is shown while maximized
   - the ⛶ button and the tab menu on an *inactive* group: that group is the one maximized
   - terminal focused: Ctrl+M fills the window, Ctrl+M restores, and the shell gets no Enter key
   - secondary side bar focused: Ctrl+M maximizes it and restores it
+  - a web view chat in the secondary side bar (Claude Code, for example): the same
+  - a web view editor tab (a Markdown preview, for example): Ctrl+M maximizes the editor
   - Esc Esc out of each maximized state, then Ctrl+M: it maximizes or restores cleanly, with no
     half-restored layout
 
@@ -61,6 +66,12 @@ single source, so don't restate it here.**
   `checkTerminalSkipList()`.
 - **The secondary side bar uses VS Code's own maximize**, which already hides and restores
   everything else.
+- **Web views outside the editors report no focus.** VS Code draws a side-bar or panel web view in
+  an overlay outside its part, with only the global context keys. So inside a chat,
+  `auxiliaryBarFocus`, `focusedView` and `viewLocation` are all unset. `editorAreaFocus` is scoped
+  to the editor part, and web view editors inherit it. Hence:
+  - **the editor row needs `editorAreaFocus` or `sideBarFocus`**, not just "not the panel or the
+    secondary side bar"
+  - **a key from no part goes to the secondary side bar row** when that bar is visible
 - **Not done yet (ideas):**
   - maximizing the primary side bar (VS Code has no maximize for it)
-  - the Marketplace listing: the package and the `lucidsleep` publisher are ready, the upload isn't done

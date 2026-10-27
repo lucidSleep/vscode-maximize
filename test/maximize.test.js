@@ -169,3 +169,184 @@ test.describe('package.json', () => {
     assert.deepEqual([...skipList].sort(), [...ALL_COMMANDS].sort());
   });
 });
+
+/**
+ * Splits a `when` clause into tokens, for the subset package.json uses: key names, `!`, `&&`,
+ * `||`, parentheses, and `==` / `!=` against a quoted string. Throws on anything else.
+ * @param {string} expression
+ * @returns {string[]}
+ */
+function tokenizeWhen(expression) {
+  const pattern = /\s*(\(|\)|&&|\|\||!=|==|!|'[^']*'|[\w.]+)/y;
+  /** @type {string[]} */
+  const tokens = [];
+  const end = expression.trimEnd().length;
+  while (pattern.lastIndex < end) {
+    const start = pattern.lastIndex;
+    const match = pattern.exec(expression);
+    if (match === null) {
+      throw new Error(`Unsupported syntax at ${start} in: ${expression}`);
+    }
+    tokens.push(match[1]);
+  }
+  return tokens;
+}
+
+/**
+ * Evaluates a `when` clause the way VS Code does, for the subset tokenizeWhen() accepts. A key
+ * missing from the context is unset, as in VS Code. It knows nothing of the values VS Code sets:
+ * each test gives them.
+ * @param {string} expression
+ * @param {Readonly<Record<string, unknown>>} context
+ * @returns {boolean}
+ */
+function evaluateWhen(expression, context) {
+  const tokens = tokenizeWhen(expression);
+  let position = 0;
+
+  /** @param {string} message */
+  const fail = (message) => new Error(`${message} at token ${position} in: ${expression}`);
+
+  /** @returns {boolean} */
+  const parseOr = () => {
+    let value = parseAnd();
+    while (tokens[position] === '||') {
+      position++;
+      const right = parseAnd(); // parsed even when value is true, to consume its tokens
+      value = value || right;
+    }
+    return value;
+  };
+
+  /** @returns {boolean} */
+  const parseAnd = () => {
+    let value = parseUnary();
+    while (tokens[position] === '&&') {
+      position++;
+      const right = parseUnary();
+      value = value && right;
+    }
+    return value;
+  };
+
+  /** @returns {boolean} */
+  const parseUnary = () => {
+    if (tokens[position] === '!') {
+      position++;
+      return !parseUnary();
+    }
+    return parsePrimary();
+  };
+
+  /** @returns {boolean} */
+  const parsePrimary = () => {
+    const token = tokens[position++];
+    if (token === '(') {
+      const value = parseOr();
+      if (tokens[position++] !== ')') {
+        throw fail('Expected )');
+      }
+      return value;
+    }
+    if (token === undefined || !/^[\w.]+$/.test(token)) {
+      throw fail(`Expected a key, got ${token}`);
+    }
+    const operator = tokens[position];
+    if (operator !== '==' && operator !== '!=') {
+      return Boolean(context[token]);
+    }
+    position++;
+    const literal = tokens[position++];
+    if (literal === undefined || !/^'[^']*'$/.test(literal)) {
+      throw fail(`Expected a quoted string, got ${literal}`);
+    }
+    const equal = context[token] === literal.slice(1, -1);
+    return operator === '==' ? equal : !equal;
+  };
+
+  const result = parseOr();
+  if (position !== tokens.length) {
+    throw fail(`Unexpected ${tokens[position]}`);
+  }
+  return result;
+}
+
+test.describe('Ctrl+M keybinding rows', () => {
+  /** @type {Array<{ command: string, key: string, when: string }>} */
+  const keybindings = manifest.contributes.keybindings;
+  const rows = keybindings.filter((binding) => binding.key === 'ctrl+m');
+
+  /**
+   * @param {Readonly<Record<string, unknown>>} context
+   * @returns {string[]} the commands whose row matches
+   */
+  const matchingCommands = (context) =>
+    rows.filter((row) => evaluateWhen(row.when, context)).map((row) => row.command);
+
+  /**
+   * The focus keys VS Code sets for each place the keyboard focus can be. A web view in a side
+   * bar or the panel, such as a chat, sets none: VS Code draws it in an overlay outside its part,
+   * with only the global context keys.
+   * @type {Readonly<Record<string, Readonly<Record<string, boolean>>>>}
+   */
+  const FOCUS = {
+    editor: { editorAreaFocus: true },
+    sideBar: { sideBarFocus: true },
+    panel: { panelFocus: true },
+    secondarySideBar: { auxiliaryBarFocus: true },
+    webview: {},
+  };
+
+  test.it('matches at most one row in every layout', () => {
+    const flags = ['inZenMode', 'panelMaximized', 'auxiliaryBarMaximized', 'auxiliaryBarVisible',
+      'editorPartMaximizedEditorGroup'];
+    for (const [focus, focusKeys] of Object.entries(FOCUS)) {
+      for (let bits = 0; bits < 2 ** flags.length; bits++) {
+        /** @type {Record<string, unknown>} */
+        const context = { ...focusKeys };
+        flags.forEach((flag, index) => { context[flag] = (bits & (1 << index)) !== 0; });
+        // Layouts VS Code can't be in: a maximized secondary side bar hides every other part,
+        // and only a visible one can have focus.
+        const secondaryFocus = focus === 'secondarySideBar' || focus === 'webview';
+        if (context.auxiliaryBarMaximized && (!context.auxiliaryBarVisible || !secondaryFocus)) {
+          continue;
+        }
+        if (focus === 'secondarySideBar' && !context.auxiliaryBarVisible) {
+          continue;
+        }
+        for (const panelAlignment of ['center', 'left']) {
+          for (const panelPosition of ['bottom', 'right']) {
+            const layout = { ...context, panelAlignment, panelPosition };
+            const matches = matchingCommands(layout);
+            assert.ok(matches.length <= 1, `${matches.join(' and ')} both match ${JSON.stringify(layout)}`);
+          }
+        }
+      }
+    }
+  });
+
+  /** @type {Array<[string, Record<string, unknown>, string]>} */
+  const SITUATIONS = [
+    ['an editor', { ...FOCUS.editor, auxiliaryBarVisible: true }, 'maximize.maximizeEditor'],
+    ['the Explorer', { ...FOCUS.sideBar, auxiliaryBarVisible: true }, 'maximize.maximizeEditor'],
+    ['the terminal panel', { ...FOCUS.panel, panelAlignment: 'center', panelPosition: 'bottom' },
+      'maximize.maximizePanel'],
+    ['a native view in the secondary side bar', { ...FOCUS.secondarySideBar, auxiliaryBarVisible: true },
+      'maximize.toggleSecondarySideBar'],
+    ['a web view chat in the secondary side bar', { ...FOCUS.webview, auxiliaryBarVisible: true },
+      'maximize.toggleSecondarySideBar'],
+    ['a web view chat in the maximized secondary side bar',
+      { ...FOCUS.webview, auxiliaryBarVisible: true, auxiliaryBarMaximized: true }, 'maximize.toggleSecondarySideBar'],
+    ['a web view with the secondary side bar closed', { ...FOCUS.webview }, 'maximize.maximizeEditor'],
+    ['an editor in Zen Mode', { ...FOCUS.editor, inZenMode: true }, 'maximize.restore'],
+    ['an editor in Zen Mode with its group maximized',
+      { ...FOCUS.editor, inZenMode: true, editorPartMaximizedEditorGroup: true }, 'maximize.restoreGroupMaximized'],
+    ['a web view chat beside a panel still maximized after Esc Esc',
+      { ...FOCUS.webview, auxiliaryBarVisible: true, panelMaximized: true }, 'maximize.restorePanelMaximized'],
+  ];
+  for (const [place, context, expected] of SITUATIONS) {
+    test.it(`runs ${expected} from ${place}`, () => {
+      assert.deepEqual(matchingCommands(context), [expected]);
+    });
+  }
+});

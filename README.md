@@ -89,6 +89,10 @@ the Enter key for the shell, and this extension now takes it there too.
   while maximized. Both work, but only *Restore Layout* also leaves Zen Mode.
 - **Chat views and other web views see a key first.** Most pass Ctrl+M on to VS Code. One that uses
   it itself keeps it, and the title-bar button still works there.
+- **VS Code doesn't tell which side bar or panel a web view is in.** Ctrl+M from a web view outside
+  the editors, such as a chat, maximizes the secondary side bar when it's open, and the editor
+  otherwise. That's right for a chat in the secondary side bar, the usual place. For a web view in
+  the panel, use the panel's ⛶ button instead.
 
 ## Development
 
