@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2 (2026-11-05)
+
+- **Fixed: maximizing the panel only made it wider while a web view tab was on show**, a Claude
+  Code session for example: the side bars went, but the editor stayed. VS Code's own *Maximize
+  Panel* fails the same way there, so a placeholder tab now covers such a tab until you restore.
+  See [Limitations](README.md#limitations).
+
 ## 0.3.1 (2026-10-27)
 
 - **Fixed: the *What Ctrl+M does* table in the README showed as run-on text**, on the

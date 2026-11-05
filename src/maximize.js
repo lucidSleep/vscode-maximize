@@ -26,6 +26,9 @@
  * @typedef {object} Workbench the part of the VS Code API this logic needs
  * @property {(command: string, ...args: unknown[]) => Thenable<unknown>} executeCommand
  * @property {() => number} editorGroupCount
+ * @property {() => Promise<void>} coverWebviews puts a placeholder tab in front of each web view
+ *   tab on show, so hiding the editor area doesn't hide a web view: see maximizePanel()
+ * @property {() => Promise<void>} uncoverWebviews closes those placeholder tabs, if there are any
  *
  * @typedef {'global' | 'workspace'} SettingScope
  *
@@ -131,6 +134,10 @@ async function maximizeEditor(request, workbench, menuArgs) {
 
 /** @param {Workbench} workbench */
 async function maximizePanel(workbench) {
+  // Hiding a web view on show makes VS Code put the editor area straight back, whatever the order
+  // of the commands below: see "Design decisions" in CLAUDE.md. So none may be on show by then.
+  await workbench.coverWebviews();
+
   // Zen Mode hides the panel along with the side bars. Maximizing the panel then shows it again
   // in place of the editor area, so it fills the window.
   await workbench.executeCommand(BUILT_IN.toggleZenMode);
@@ -152,6 +159,9 @@ async function restoreLayout(request, workbench) {
     await workbench.executeCommand(BUILT_IN.toggleMaximizeEditorGroup);
   }
   await workbench.executeCommand(BUILT_IN.exitZenMode);
+  // Whatever is being restored: VS Code may have un-maximized the panel since, which routes here
+  // as a plain restore, with the placeholders still open.
+  await workbench.uncoverWebviews();
 }
 
 /**

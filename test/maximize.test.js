@@ -8,6 +8,9 @@ const { BUILT_IN, COMMAND_REQUESTS, findKeybindingConflicts, findSkipListGap, ru
 const manifest = require('../package.json');
 
 const ALL_COMMANDS = Object.keys(COMMAND_REQUESTS);
+/** How the fake workbench records its two calls that aren't VS Code commands. */
+const COVER_WEBVIEWS = 'coverWebviews';
+const UNCOVER_WEBVIEWS = 'uncoverWebviews';
 
 /**
  * A workbench that records the commands it is asked to run.
@@ -32,6 +35,12 @@ function fakeWorkbench(editorGroupCount = 1, failingCommand = undefined) {
       return undefined;
     },
     editorGroupCount: () => editorGroupCount,
+    coverWebviews: async () => {
+      calls.push({ command: COVER_WEBVIEWS, args: [] });
+    },
+    uncoverWebviews: async () => {
+      calls.push({ command: UNCOVER_WEBVIEWS, args: [] });
+    },
   };
 }
 
@@ -62,10 +71,11 @@ test.describe('runToggle', () => {
     assert.deepEqual(workbench.commands(), [BUILT_IN.toggleZenMode]);
   });
 
-  test.it('maximizes the panel over the whole window and focuses it', async () => {
+  test.it('covers web views, then maximizes the panel over the whole window and focuses it', async () => {
     const workbench = fakeWorkbench(1);
     await runToggle(COMMAND_REQUESTS['maximize.maximizePanel'], workbench);
     assert.deepEqual(workbench.commands(), [
+      COVER_WEBVIEWS,
       BUILT_IN.toggleZenMode,
       BUILT_IN.toggleMaximizedPanel,
       BUILT_IN.focusPanel,
@@ -81,25 +91,33 @@ test.describe('runToggle', () => {
   test.it('restores by leaving Zen Mode', async () => {
     const workbench = fakeWorkbench(1);
     await runToggle(COMMAND_REQUESTS['maximize.restore'], workbench);
-    assert.deepEqual(workbench.commands(), [BUILT_IN.exitZenMode]);
+    assert.deepEqual(workbench.commands(), [BUILT_IN.exitZenMode, UNCOVER_WEBVIEWS]);
   });
 
   test.it('un-maximizes the group before leaving Zen Mode', async () => {
     const workbench = fakeWorkbench(2);
     await runToggle(COMMAND_REQUESTS['maximize.restoreGroupMaximized'], workbench);
-    assert.deepEqual(workbench.commands(), [BUILT_IN.toggleMaximizeEditorGroup, BUILT_IN.exitZenMode]);
+    assert.deepEqual(workbench.commands(), [
+      BUILT_IN.toggleMaximizeEditorGroup,
+      BUILT_IN.exitZenMode,
+      UNCOVER_WEBVIEWS,
+    ]);
   });
 
   test.it('un-maximizes the panel before leaving Zen Mode', async () => {
     const workbench = fakeWorkbench(1);
     await runToggle(COMMAND_REQUESTS['maximize.restorePanelMaximized'], workbench);
-    assert.deepEqual(workbench.commands(), [BUILT_IN.toggleMaximizedPanel, BUILT_IN.exitZenMode]);
+    assert.deepEqual(workbench.commands(), [
+      BUILT_IN.toggleMaximizedPanel,
+      BUILT_IN.exitZenMode,
+      UNCOVER_WEBVIEWS,
+    ]);
   });
 
   test.it('stops and rejects when a command fails', async () => {
     const workbench = fakeWorkbench(1, BUILT_IN.toggleZenMode);
     await assert.rejects(runToggle(COMMAND_REQUESTS['maximize.maximizePanel'], workbench), /toggleZenMode failed/);
-    assert.deepEqual(workbench.commands(), [BUILT_IN.toggleZenMode]);
+    assert.deepEqual(workbench.commands(), [COVER_WEBVIEWS, BUILT_IN.toggleZenMode]);
   });
 });
 

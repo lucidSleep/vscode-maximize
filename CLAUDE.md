@@ -36,11 +36,14 @@ single source, so don't restate it here.**
   - editor, two split groups: the same, and only the active group is shown while maximized
   - the ⛶ button and the tab menu on an *inactive* group: that group is the one maximized
   - terminal focused: Ctrl+M fills the window, Ctrl+M restores, and the shell gets no Enter key
+  - terminal focused, with a Claude Code tab on show, alone and in a split: Ctrl+M fills the
+    window, Ctrl+M brings the tab back, and the focus stays in the terminal
   - secondary side bar focused: Ctrl+M maximizes it and restores it
   - a web view chat in the secondary side bar (Claude Code, for example): the same
   - a web view editor tab (a Markdown preview, for example): Ctrl+M maximizes the editor
   - Esc Esc out of each maximized state, then Ctrl+M: it maximizes or restores cleanly, with no
-    half-restored layout
+    half-restored layout. The terminal sends Esc to the shell, so for the panel, focus another of
+    its views first
   - `maximize.showButtons` off: no ⛶ button in the editor or panel title bar, maximized or not,
     while Ctrl+M and the tab menu still work. Turned back on, the buttons return with no reload
   - `maximize.editorButtonPosition` and `maximize.panelButtonPosition` switched between `left` and
@@ -76,6 +79,19 @@ single source, so don't restate it here.**
   `checkTerminalSkipList()`.
 - **The secondary side bar uses VS Code's own maximize**, which already hides and restores
   everything else.
+- **A web view tab on show gets a placeholder tab in front of it before the panel is maximized.**
+  Hiding the editor area releases the web view. For one with `retainContextWhenHidden` and
+  `enableFindWidget`, Claude Code's for example, that closes its find widget, which focuses the web
+  view and activates its group. VS Code's layout listener treats any group activation while the
+  editor area is hidden as a reason to show it again. All of this runs inside
+  `toggleMaximizedPanel`, so no order of commands or delay helps, and VS Code's own maximize fails
+  the same way. So:
+  - **`coverWebviews()` runs first, `uncoverWebviews()` on every restore:** a restore that isn't
+    the panel's can still find placeholders, when something un-maximized the panel in between.
+  - **Every web view and custom editor tab on show is covered.** The API can't read a web view's
+    options, or tell a floating window's group from a main one.
+  - **A group that loses its web view this way ends up active,** since the focus activates it
+    before the placeholder takes over.
 - **Web views outside the editors report no focus.** VS Code draws a side-bar or panel web view in
   an overlay outside its part, with only the global context keys. So inside a chat,
   `auxiliaryBarFocus`, `focusedView` and `viewLocation` are all unset. `editorAreaFocus` is scoped

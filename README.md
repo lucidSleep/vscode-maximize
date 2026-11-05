@@ -116,6 +116,11 @@ environment*, which types `$$`.
   the editors, such as a chat, maximizes the secondary side bar when it's open, and the editor
   otherwise. That's right for a chat in the secondary side bar, the usual place. For a web view in
   the panel, use the panel's ⛶ button instead.
+- **A *Panel Maximized* placeholder tab covers a web view tab on show while the panel is maximized,**
+  a Claude Code session for example, even one in a floating window. VS Code cancels a maximized
+  panel when that would hide such a tab, even with its own maximize button. Restoring closes the
+  placeholder and brings the tab back. If you leave the maximized panel some other way, the
+  placeholder may stay open: just close it.
 
 ## Development
 

@@ -18,6 +18,16 @@ const ACKNOWLEDGED_KEYBINDING_CONFLICTS = 'acknowledgedKeybindingConflicts';
  * @type {Set<string>}
  */
 const conflictsWarnedThisSession = new Set();
+/** The URI scheme of the placeholder tab that covers a web view while the panel is maximized. */
+const PLACEHOLDER_SCHEME = 'maximize-placeholder';
+const PLACEHOLDER_URI = vscode.Uri.from({ scheme: PLACEHOLDER_SCHEME, path: '/Panel Maximized' });
+const PLACEHOLDER_TEXT = [
+  'This tab keeps a web view out of sight while the panel is maximized.',
+  'VS Code cancels a maximized panel when it has to hide a web view tab on show.',
+  '',
+  'Maximize closes this tab when you restore the layout. If it is still here, just close it.',
+  '',
+].join('\n');
 
 /** @param {vscode.ExtensionContext} context */
 function activate(context) {
@@ -28,7 +38,12 @@ function activate(context) {
   const workbench = {
     executeCommand: (command, ...args) => vscode.commands.executeCommand(command, ...args),
     editorGroupCount: () => vscode.window.tabGroups.all.length,
+    coverWebviews,
+    uncoverWebviews,
   };
+
+  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(
+    PLACEHOLDER_SCHEME, { provideTextDocumentContent: () => PLACEHOLDER_TEXT }));
 
   for (const [command, request] of Object.entries(COMMAND_REQUESTS)) {
     context.subscriptions.push(
@@ -52,6 +67,54 @@ function activate(context) {
 
 function deactivate() {
   // Nothing to clean up: everything registered is in context.subscriptions.
+}
+
+/**
+ * Opens the placeholder in front of each web view tab on show. The API can't tell a web view's
+ * options, or a floating window's group from a main one, so each gets covered.
+ * @returns {Promise<void>}
+ */
+async function coverWebviews() {
+  const groups = vscode.window.tabGroups.all.filter((group) => isWebviewTab(group.activeTab));
+  if (groups.length === 0) {
+    return;
+  }
+  const document = await vscode.workspace.openTextDocument(PLACEHOLDER_URI);
+  for (const group of groups) {
+    // Not a preview tab: it would replace a preview tab the user has open in that group.
+    await vscode.window.showTextDocument(
+      document, { viewColumn: group.viewColumn, preview: false, preserveFocus: true });
+  }
+}
+
+/** @returns {Promise<void>} */
+async function uncoverWebviews() {
+  const placeholders = vscode.window.tabGroups.all
+    .flatMap((group) => [...group.tabs])
+    .filter(isPlaceholderTab);
+  if (placeholders.length === 0) {
+    return;
+  }
+  const closed = await vscode.window.tabGroups.close(placeholders, true);
+  if (!closed) {
+    throw new Error(`VS Code did not close the ${placeholders.length} placeholder tab(s).`);
+  }
+}
+
+/**
+ * @param {vscode.Tab | undefined} tab
+ * @returns {boolean} the tab is a web view panel or a custom editor, which is a web view too
+ */
+function isWebviewTab(tab) {
+  return tab?.input instanceof vscode.TabInputWebview || tab?.input instanceof vscode.TabInputCustom;
+}
+
+/**
+ * @param {vscode.Tab} tab
+ * @returns {boolean}
+ */
+function isPlaceholderTab(tab) {
+  return tab.input instanceof vscode.TabInputText && tab.input.uri.scheme === PLACEHOLDER_SCHEME;
 }
 
 /**
